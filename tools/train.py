@@ -29,7 +29,8 @@ Vishal Satish & Jeff Mahler
 import argparse
 import os
 import time
-
+import sys
+sys.path.append("/home/amithp/fcgqcnn_env/gqcnn")
 import autolab_core.utils as utils
 from autolab_core import YamlConfig, Logger
 from gqcnn import get_gqcnn_model, get_gqcnn_trainer, utils as gqcnn_utils

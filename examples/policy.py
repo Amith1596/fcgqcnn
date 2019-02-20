@@ -33,11 +33,12 @@ import os
 import time
 
 import numpy as np
-
+import sys
+sys.path.append("/home/amithp/fcgqcnn_env/gqcnn")
+import gqcnn
 from autolab_core import RigidTransform, YamlConfig, Logger
 from perception import BinaryImage, CameraIntrinsics, ColorImage, DepthImage, RgbdImage
 from visualization import Visualizer2D as vis
-
 from gqcnn.grasping import RobustGraspingPolicy, CrossEntropyRobustGraspingPolicy, RgbdImageState, FullyConvolutionalGraspingPolicyParallelJaw, FullyConvolutionalGraspingPolicySuction
 from gqcnn.utils import GripperMode, NoValidGraspsException
 
