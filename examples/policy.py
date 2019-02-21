@@ -121,6 +121,8 @@ import os
 import sys
 import time
 
+sys.path.append("/home/amithp/fcgqcnn_env/gqcnn")
+
 from autolab_core import RigidTransform, YamlConfig
 from perception import RgbdImage, RgbdSensorFactory
 
