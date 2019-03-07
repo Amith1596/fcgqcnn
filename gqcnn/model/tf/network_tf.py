@@ -762,6 +762,7 @@ class GQCNNTF(object):
                                                 feed_dict={self._input_im_node: self._input_im_arr,
                                                            self._input_pose_node: self._input_pose_arr})
 
+                self._logger.info("gqcnn output shape is "+str(gqcnn_output.shape))
                 # allocate output tensor
                 if output_arr is None:
                     output_arr = np.zeros([num_images] + list(gqcnn_output.shape[1:]))
@@ -865,7 +866,8 @@ class GQCNNTF(object):
         return tf.maximum(alpha * x, x)
     
     def _build_conv_layer(self, input_node, input_height, input_width, input_channels, filter_h, filter_w, num_filt, pool_stride_h, pool_stride_w, pool_size, name, norm=False, pad='SAME'):
-        self._logger.info('Building convolutional layer: {}...'.format(name))       
+        self._logger.info('Building convolutional layer: {}...'.format(name))    
+        self._logger.info('Input details are:'+str(input_node.shape) +' h= '+str(input_height)+" w= "+str(input_width)+ " ch= "+str(input_channels))   
         with tf.name_scope(name):
             # initialize weights
             if '{}_weights'.format(name) in self._weights.weights.keys():
@@ -915,6 +917,7 @@ class GQCNNTF(object):
             # add output to feature dict
             self._feature_tensors[name] = pool
 
+            self._logger.info("output shape is "+str(pool.shape))
             return pool, out_height, out_width, out_channels
 
     def _build_fc_layer(self, input_node, fan_in, out_size, name, input_is_multi, drop_rate, final_fc_layer=False):

@@ -20,8 +20,8 @@
   "max_training_examples_per_load": 128, 
   "drop_rate": 0.0, 
   "max_global_grad_norm": 100000000000, 
-  "training_mode": "classification", 
-  "image_field_name": "tf_depth_ims_no_rot", 
+  "training_mode": "classification",
+  "image_field_name": "tf_depth_ims",
   "pose_field_name": "grasps", 
   "target_metric_name": "grasp_metrics", 
   "metric_thresh": 0.5, 
@@ -110,6 +110,6 @@
     "bias": 1.0, 
     "relu_coeff": 0.0
   }, 
-  "dataset_dir": "/home/vsatish/Workspace/dev/gqcnn/../dex-net/data/training/dexnet_4_fc_ang_07_20_18/grasps/", 
+  "dataset_dir": "/home/amithp/fcgqcnn_env/data/training/mini-dexnet_fc_pj_10_02_18/grasps", 
   "split_name": "image_wise"
 }

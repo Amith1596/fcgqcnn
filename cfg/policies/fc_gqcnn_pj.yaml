@@ -28,7 +28,8 @@ policy:
     num_samples: 0
     actions_2d: 0
     actions_3d: 0
-    affordance_map: 0
+    affordance_map: 1
+    output_dir: /home/amithp/fcgqcnn_env/output
   vis:
     final_grasp: 1
 

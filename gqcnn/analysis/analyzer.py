@@ -206,6 +206,8 @@ class GQCNNAnalyzer(object):
         self.logger.info('Loading dataset %s' %(dataset_dir))
         dataset = TensorDataset.open(dataset_dir)
         train_indices, val_indices, _ = dataset.split(split_name)
+        print train_indices
+        print val_indices
         
         # visualize conv filters
         conv1_filters = gqcnn.filters
@@ -284,7 +286,9 @@ class GQCNNAnalyzer(object):
 
         # aggregate results
         train_result = BinaryClassificationResult(train_predictions, train_labels)
+        print train_result.pred_probs
         val_result = BinaryClassificationResult(val_predictions, val_labels)
+        print val_result.pred_probs
         train_result.save(os.path.join(model_output_dir, 'train_result.cres'))
         val_result.save(os.path.join(model_output_dir, 'val_result.cres'))
 

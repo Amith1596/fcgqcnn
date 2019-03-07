@@ -31,7 +31,8 @@ import argparse
 import json
 import os
 import time
-
+import matplotlib.pyplot as plt
+import skimage
 import numpy as np
 import sys
 sys.path.append("/home/amithp/fcgqcnn_env/gqcnn")
@@ -50,6 +51,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run a grasping policy on an example image')
     parser.add_argument('model_name', type=str, default=None, help='name of a trained model to run')
     parser.add_argument('--depth_image', type=str, default=None, help='path to a test depth image stored as a .npy file')
+    parser.add_argument('--id', type=str, default="default", help='path to an image id to use')
     parser.add_argument('--segmask', type=str, default=None, help='path to an optional segmask to use')
     parser.add_argument('--camera_intr', type=str, default=None, help='path to the camera intrinsics')
     parser.add_argument('--model_dir', type=str, default=None, help='path to the folder in which the model is stored')
@@ -58,27 +60,30 @@ if __name__ == '__main__':
     args = parser.parse_args()
     model_name = args.model_name
     depth_im_filename = args.depth_image
+    img_id=args.id
     segmask_filename = args.segmask
     camera_intr_filename = args.camera_intr
     model_dir = args.model_dir
     config_filename = args.config_filename
     fully_conv = args.fully_conv
 
-    assert not (fully_conv and depth_im_filename is not None and segmask_filename is None), 'Fully-Convolutional policy expects a segmask.'
+    #edit by Amith
+    #assert not (fully_conv and depth_im_filename is not None and segmask_filename is None), 'Fully-Convolutional policy expects a segmask.'
 
     if depth_im_filename is None:
         if fully_conv:
             depth_im_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                              '..',
-                                             'data/examples/clutter/primesense/depth_0.npy')
+                                             'data/examples/clutter/primesense/depth_6.npy')
         else:
             depth_im_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                              '..',
                                              'data/examples/single_object/primesense/depth_0.npy')
-    if fully_conv and segmask_filename is None:
-        segmask_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                        '..',
-                                        'data/examples/clutter/primesense/segmask_0.png')
+    #Edit by Amith
+    # if fully_conv and segmask_filename is None:
+    #     segmask_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+    #                                     '..',
+    #                                     'data/examples/clutter/primesense/segmask_4.png')
     if camera_intr_filename is None:
         camera_intr_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                             '..',
@@ -151,20 +156,65 @@ if __name__ == '__main__':
         
     # read images
     depth_data = np.load(depth_im_filename)
+    color_data = skimage.data.imread(depth_im_filename[:-11]+"color_0.png")
+    #Added by Amith to save data
+    if not os.path.exists('images'):
+        os.makedirs('images')
+
+    #Added by Amith to filter depth values(causes problem in depth sampling)
+    depth_data[depth_data > 1] = 0
+    
+
     depth_im = DepthImage(depth_data, frame=camera_intr.frame)
     color_im = ColorImage(np.zeros([depth_im.height, depth_im.width, 3]).astype(np.uint8),
                           frame=camera_intr.frame)
     
+    colour_img=ColorImage(color_data.astype(np.uint8),frame=camera_intr.frame)
+    #Added by Amith
+    # generating segmask
+   
+    depth_data[depth_data < 0.69] = np.iinfo(np.uint8).max
+    depth_data[depth_data < np.iinfo(np.uint8).max] = 0
+    print depth_data.astype(np.uint8)
+    segmask=BinaryImage(depth_data.astype(np.uint8))
+    # segmask = depth_data.astype(np.uint8)
+    vis.figure(size=(15,10))
+
+    vis.subplot(231)
+    vis.title("Threshold Segmask")
+    vis.imshow(segmask)
+    # plt.show()
+    # segmask = BinaryImage(segmask)
     # optionally read a segmask
-    segmask = None
-    if segmask_filename is not None:
-        segmask = BinaryImage.open(segmask_filename)
+
+    #segmask = None 
+    #if segmask_filename is not None:
+    #    segmask = BinaryImage.open(segmask_filename)
     valid_px_mask = depth_im.invalid_pixel_mask().inverse()
+
+    vis.subplot(2,3,2)
+    vis.title("Invalid points Segmask")
+    vis.imshow(valid_px_mask)
+    
     if segmask is None:
         segmask = valid_px_mask
     else:
         segmask = segmask.mask_binary(valid_px_mask)
     
+    vis.subplot(2,3,3)
+    vis.title("Combined Segmask")
+    vis.imshow(segmask) #added by Amith
+
+    vis.subplot(2,3,4)
+    vis.title("Depth Image")
+    vis.imshow(depth_im)
+
+    vis.subplot(2,3,5)
+    vis.title("Colour Image")
+    vis.imshow(colour_img)
+
+    #vis.show("images/"+img_id+"/segmasks.png")
+    #vis.savefig("/home/fcgqcnn_env/images/"+img_id+".png")
     # inpaint
     depth_im = depth_im.inpaint(rescale_factor=inpaint_rescale_factor)
         
@@ -212,14 +262,21 @@ if __name__ == '__main__':
     # query policy
     policy_start = time.time()
     action = policy(state)
+    plan_time = time.time() - policy_start
     logger.info('Planning took %.3f sec' %(time.time() - policy_start))
 
     # vis final grasp
     if policy_config['vis']['final_grasp']:
-        vis.figure(size=(10,10))
+        #vis.figure(size=(10,10))
+        vis.subplot(2,3,6)
         vis.imshow(rgbd_im.depth,
                    vmin=policy_config['vis']['vmin'],
                    vmax=policy_config['vis']['vmax'])
         vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
         vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
-        vis.show()
+        #vis.savefig("/home/fcgqcnn_env/images/"+img_id+"_grasp.png")
+        #vis.show("images/"+img_id+".png")
+        print "Planned grasp at depth" + str(action.grasp.depth)+" with Q= " + str(action.q_value)
+
+    # with open("/home/amithp/fcgqcnn_env/out_filter.csv", "a") as f:
+    #     f.write("%s,%.3f,%.3f,%.3f\n" %(img_id,action.grasp.depth,action.q_value,plan_time))

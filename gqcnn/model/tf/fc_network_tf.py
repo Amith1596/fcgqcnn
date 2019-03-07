@@ -105,7 +105,11 @@ class FCGQCNNTF(GQCNNTF):
         
         # create new set of weights by reshaping fully connected layer weights
         fcW = self._weights.weights['{}_weights'.format(fc_name)]
+        print tf.shape(fcW)[0]
+        print tf.shape(fcW)[1:]
+        print fcW.shape
         convW = tf.Variable(tf.reshape(fcW, tf.concat([[filter_dim, filter_dim], [tf.shape(fcW)[0] / (filter_dim * filter_dim)], tf.shape(fcW)[1:]], 0)), name='{}_fully_conv_weights'.format(fc_name))
+        print convW.shape
         self._weights.weights['{}_fully_conv_weights'.format(fc_name)] = convW
         
         # get bias
@@ -127,6 +131,8 @@ class FCGQCNNTF(GQCNNTF):
         # add output to feature_dict
         self._feature_tensors[fc_name] = convh
 
+        self._logger.info("The "+str(fc_name) +"convolution output dimension is"+ str(convh.shape))
+        
         return convh
 
     def _build_fully_conv_merge_layer(self, input_node_im, input_node_pose, filter_dim, fc_name):
@@ -158,6 +164,8 @@ class FCGQCNNTF(GQCNNTF):
 
         # add bias and apply activation
         convh = self._leaky_relu(convh + bias_packed, alpha=self._relu_coeff)
+
+        
 
         return convh
 
