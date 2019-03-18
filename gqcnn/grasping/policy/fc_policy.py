@@ -188,7 +188,7 @@ class FullyConvolutionalGraspingPolicy(GraspingPolicy):
         """Generate inputs for the grasp quality function."""
         pass 
 
-    def _action(self, state, num_actions=1):
+    def _action(self, state,img_id, num_actions=1):
         """Plan action(s)."""
         if self._filter_grasps:
             assert self._filters is not None, 'Trying to filter grasps but no filters were provided!'
@@ -252,7 +252,7 @@ class FullyConvolutionalGraspingPolicy(GraspingPolicy):
             self._logger.info('Generating 2D visualization...')
             self._visualize_2d(actions, preds_success_only, wrapped_depth, num_actions_to_sample, self._vis_scale, self._vis_show_axis, output_dir=state_output_dir)
         if self._vis_affordance_map:
-            self._visualize_affordance_map(preds_success_only, wrapped_depth, self._vis_scale, output_dir=state_output_dir)
+            self._visualize_affordance_map(preds_success_only, wrapped_depth, self._vis_scale,img_id,output_dir=state_output_dir)
 
         return actions[-1] if (self._filter_grasps or num_actions == 1) else actions[-(num_actions+1):]
 
@@ -337,15 +337,16 @@ class FullyConvolutionalGraspingPolicyParallelJaw(FullyConvolutionalGraspingPoli
         """Visualize the actions in 3D."""
         raise NotImplementedError
 
-    def _visualize_affordance_map(self, preds, depth_im, scale, plot_max=True, output_dir=None):
+    def _visualize_affordance_map(self, preds, depth_im, scale,img_id, plot_max=True, output_dir=None):
         """Visualize an affordance map of the network predictions overlayed on the depth image."""
         self._logger.info('Visualizing affordance map...')
 
         affordance_map=preds[:,:,:,:]
         tf_depth_im = depth_im.crop(depth_im.shape[0] - self._gqcnn_recep_h, depth_im.shape[1] - self._gqcnn_recep_w).resize(1.0 / self._gqcnn_stride)
         
-        affordance_map=affordance_map.max(axis=3)
-        affordance_map=affordance_map.max(axis=0)
+        target=affordance_map.max(axis=0)
+        affordance_map=target.max(axis=2)
+        
 
         # plot
         vis.figure()
@@ -356,11 +357,13 @@ class FullyConvolutionalGraspingPolicyParallelJaw(FullyConvolutionalGraspingPoli
             plt.scatter(affordance_argmax[1], affordance_argmax[0], c='black', marker='.', s=scale*25)
             print affordance_map[affordance_argmax]
         vis.title('Grasp Affordance Map')
-        # if output_dir is not None:
-        #     vis.savefig(output_dir[:-5]+str(datetime.datetime.now())+'.png')
-        # else:
-        #     vis.show()
-        vis.show()
+        if output_dir is not None:
+            print "saving"
+            np.savez("/home/amithp/fcgqcnn_env/snapshots-thomas-noheight/"+img_id+'/target.npz',target)
+            #vis.savefig("/home/amithp/fcgqcnn_env/snapshots-thomas-noheight"+img_id+'.npz')
+        else:
+            vis.show()
+        #vis.show()
 
 class FullyConvolutionalGraspingPolicySuction(FullyConvolutionalGraspingPolicy):
     """Suction grasp sampling policy using Fully-Convolutional GQ-CNN network."""

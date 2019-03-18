@@ -157,8 +157,8 @@ class Policy(object):
     """ Abstract policy class. """
     __metaclass__ = ABCMeta
 
-    def __call__(self, state):
-        return self.action(state)
+    def __call__(self, state, img_id):
+        return self.action(state , img_id)
 
     @abstractmethod
     def action(self, state):
@@ -259,7 +259,7 @@ class GraspingPolicy(Policy):
     def set_constraint_fn(self, constraint_fn):
         self._grasp_constraint_fn = constraint_fn    
     
-    def action(self, state):
+    def action(self, state,img_id):
         """ Returns an action for a given state.
         Public handle to function.
         """
@@ -276,7 +276,7 @@ class GraspingPolicy(Policy):
             state.save(state_dir)
 
         # plan action
-        action = self._action(state)
+        action = self._action(state,img_id)
 
         # save action
         if self._logging_dir is not None:

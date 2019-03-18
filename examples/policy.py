@@ -261,7 +261,7 @@ if __name__ == '__main__':
 
     # query policy
     policy_start = time.time()
-    action = policy(state)
+    action = policy(state,img_id)
     plan_time = time.time() - policy_start
     logger.info('Planning took %.3f sec' %(time.time() - policy_start))
 
