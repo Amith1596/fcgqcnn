@@ -4,9 +4,9 @@ import skimage
 import matplotlib.pyplot as plt
 import numpy as np
 
-path= "/home/amithp/fcgqcnn_env/snapshots-thomas-converted/"
+#alt_path= "/home/amithp/fcgqcnn_env/snapshots-thomas-converted/"
 alt_path="/home/amithp/fcgqcnn_env/snapshots-thomas-noheight/"
-folders=os.listdir(path)
+folders=os.listdir(alt_path)
 problem_images=["2019-02-13-18-53-5412345",
 "2019-02-13-19-15-2512345",
 "2019-02-13-19-10-3012345",

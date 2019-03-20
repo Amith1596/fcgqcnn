@@ -359,7 +359,7 @@ class FullyConvolutionalGraspingPolicyParallelJaw(FullyConvolutionalGraspingPoli
         vis.title('Grasp Affordance Map')
         if output_dir is not None:
             print "saving"
-            np.savez("/home/amithp/fcgqcnn_env/snapshots-thomas-noheight/"+img_id+'/target.npz',target)
+            np.savez("/home/amithp/fcgqcnn_env/snapshots-thomas-noheight/"+img_id+'/target.npz',arr_0=target)
             #vis.savefig("/home/amithp/fcgqcnn_env/snapshots-thomas-noheight"+img_id+'.npz')
         else:
             vis.show()

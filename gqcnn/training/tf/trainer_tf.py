@@ -131,6 +131,12 @@ class GQCNNTrainerTF(object):
                                                                            logits=self.train_net_output,
                                                                            pos_weight=self.pos_weight,
                                                                            name=None))
+        #Added Amith
+        elif self.cfg['loss'] == 'rgb_dense_l2':
+            return (1.0 / self.train_batch_size) * tf.nn.l2_loss(tf.subtract(self.train_net_output, self.train_labels_node))
+        elif self.cfg['loss'] == 'rgb_dense_mpse':
+            return tf.losses.mean_pairwise_squared_error(self.train_labels_node,self.train_net_output)
+
 
     def _create_optimizer(self, loss, batch, var_list, learning_rate):
         """ Create optimizer based on config file
@@ -323,6 +329,8 @@ class GQCNNTrainerTF(object):
             # create a TrainStatsLogger object to log training statistics at certain intervals
             self.train_stats_logger = TrainStatsLogger(self.model_dir)
 
+            #LOOKHERE to control iterations
+            self.logger.info('num epochs: %.2f, total training samples: %.2f, batch size: %.2f' % (self.num_epochs,self.num_train,self.train_batch_size)) 
             # loop through training steps
             training_range = xrange(int(self.num_epochs * self.num_train) // self.train_batch_size)
             for step in training_range:
@@ -336,7 +344,20 @@ class GQCNNTrainerTF(object):
                     _, l, ur_l, lr, predictions, raw_net_output = self.sess.run([apply_grad_op, loss, unregularized_loss, learning_rate, train_predictions, self.train_net_output], feed_dict={drop_rate_in: self.drop_rate, self.input_im_node: images, self.input_pose_node: poses, self.train_labels_node: labels}, options=GeneralConstants.timeout_option)
                 step_stop = time.time()
                 self.logger.info('Step took %.3f sec.' %(step_stop-step_start))
-               
+                self.logger.info('Shapes:: images-'+str(images.shape))
+                self.logger.info('Shapes:: poses-'+str(poses.shape))
+                self.logger.info('Shapes:: labels-'+str(labels.shape))
+                self.logger.info('Shapes:: predictions-'+str(predictions.shape))
+                self.logger.info('Shapes:: train_predictions-'+str(train_predictions.shape))
+                self.logger.info('Shapes:: raw net output-'+str(raw_net_output.shape))
+                
+                print train_predictions
+                print predictions[1,:]
+                print raw_net_output[1,:]
+                print poses[1,:]
+
+                print "These are the labels that were passed"
+                print labels
                 if self.training_mode == TrainingMode.REGRESSION:
                     self.logger.info('Max ' +  str(np.max(predictions)))
                     self.logger.info('Min ' + str(np.min(predictions)))
@@ -349,7 +370,8 @@ class GQCNNTrainerTF(object):
                         self.logger.info('Min ' + str(np.min(softmax[:,1])))
                         self.logger.info('Pred nonzero ' + str(np.sum(softmax[:,1] > 0.5)))
                         self.logger.info('True nonzero ' + str(np.sum(labels)))
-                   
+                    else:
+                        print "loss is sparse and not weighted cross entropy"                   
                 else:
                     sigmoid = 1.0 / (1.0 + np.exp(-raw_net_output))
                     self.logger.info('Max ' +  str(np.max(sigmoid)))
@@ -360,7 +382,7 @@ class GQCNNTrainerTF(object):
                 if np.isnan(l) or np.any(np.isnan(poses)):
                     self.logger.error('Encountered NaN in loss or training poses!')
                     raise Exception
-                    
+                #LOOKHERE Amith at labels and outputs shape    
                 # log output
                 if step % self.log_frequency == 0:
                     elapsed_time = time.time() - start_time
@@ -378,7 +400,10 @@ class GQCNNTrainerTF(object):
                             predictions = predictions[masks.astype(bool)].reshape((-1, 2))
                         classification_result = BinaryClassificationResult(predictions[:,1], labels)
                         train_error = classification_result.error_rate
-                        
+                    if self.training_mode == TrainingMode.REGRESSION:
+                        classification_result= RegressionResult(predictions,labels)
+                        train_error= classification_result.error_rate
+                    #LOOKHERE and check predictions shape    
                     self.logger.info('Minibatch error: %.3f' %(train_error))
                         
                     self.summary_writer.add_summary(self.sess.run(self.merged_log_summaries, feed_dict={self.minibatch_error_placeholder: train_error, self.minibatch_loss_placeholder: l, self.learning_rate_placeholder: lr}), step)
@@ -441,6 +466,8 @@ class GQCNNTrainerTF(object):
             self.saver.save(self.sess, os.path.join(self.model_dir, 'model.ckpt'))
 
         except Exception as e:
+            print e
+            self.logger.info(str(e))
             self._cleanup()
             raise
 
@@ -848,7 +875,7 @@ class GQCNNTrainerTF(object):
         self.metric_thresh = self.cfg['metric_thresh']
         self.training_mode = self.cfg['training_mode']
         if self.training_mode != TrainingMode.CLASSIFICATION:
-            raise ValueError('Training mode %s not currently supported!' %(self.training_mode))
+            self.logger.info('Training mode %s not currently supported! work in progress :P' %(self.training_mode))
         
         # tensorboad
         self._tensorboard_port = self.cfg['tensorboard_port']
@@ -935,10 +962,15 @@ class GQCNNTrainerTF(object):
         self.im_center = np.array([float(self.im_height-1)/2, float(self.im_width-1)/2])
 
         # poses
-        self.pose_field_name = self.cfg['pose_field_name']
+        #Edit Amith
+        self.pose_field_name = None
+        self.raw_pose_shape = None
+        if 'pose_field_name' in self.cfg.keys():
+            self.pose_field_name = self.cfg['pose_field_name']
+            self.raw_pose_shape = self.dataset.config['fields'][self.pose_field_name]['height']
         self.gripper_mode = self.gqcnn.gripper_mode
         self.pose_dim = pose_dim(self.gripper_mode)
-        self.raw_pose_shape = self.dataset.config['fields'][self.pose_field_name]['height']
+        
         
         # outputs
         self.label_field_name = self.target_metric_name
@@ -1125,26 +1157,34 @@ class GQCNNTrainerTF(object):
                 read_stop = time.time()
                 self.logger.debug('Reading data took %.3f sec' %(read_stop - read_start))
                 self.logger.debug('File num: %d' %(file_num))
+                self.logger.info('File num: %d' %(file_num))
+                self.logger.info('image tensor shape:'+str(train_images_tensor.shape))
+                self.logger.info('label tensor shape:'+str(train_labels_tensor.shape))
                 
                 # get batch indices uniformly at random
                 train_ind = self.train_index_map[file_num]
+                self.logger.info('train index map shape:'+str(len(self.train_index_map)))
+                self.logger.info('train_ind shape:'+str(train_ind.shape))
+                
                 np.random.shuffle(train_ind)
                 if self.gripper_mode == GripperMode.LEGACY_SUCTION:
                     tp_tmp = read_pose_data(train_poses_tensor.data, self.gripper_mode)
                     train_ind = train_ind[np.isfinite(tp_tmp[train_ind,1])]
-                    
+                print train_ind    
                 # filter positives and negatives
                 if self.training_mode == TrainingMode.CLASSIFICATION and self.pos_weight != 0.0:
                     labels = 1 * (train_labels_tensor.arr > self.metric_thresh)
                     np.random.shuffle(train_ind)
                     filtered_ind = []
+                    self.logger.info('neg accept prob:'+str(self.neg_accept_prob))
+                    self.logger.info('pos accept prob:'+str(self.pos_accept_prob))
                     for index in train_ind:
                         if labels[index] == 0 and np.random.rand() < self.neg_accept_prob:
                             filtered_ind.append(index)
                         elif labels[index] == 1 and np.random.rand() < self.pos_accept_prob:
                             filtered_ind.append(index)
                     train_ind = np.array(filtered_ind)
-
+                print train_ind
                 # samples train indices
                 upper = min(num_remaining, train_ind.shape[0], self.max_training_examples_per_load)
                 ind = train_ind[:upper]
@@ -1152,13 +1192,18 @@ class GQCNNTrainerTF(object):
                 if num_loaded == 0:
                     self.logger.warning('Queueing zero examples!!!!')
                     continue
-                
+                self.logger.info('the upper bound taken:'+str(upper))
+
                 # subsample data
                 train_images_arr = train_images_tensor.arr[ind, ...]
                 train_poses_arr = train_poses_tensor.arr[ind, ...]
                 angles = train_poses_arr[:, 3]
                 train_label_arr = train_labels_tensor.arr[ind]
                 num_images = train_images_arr.shape[0]
+                self.logger.info('poses tensor subsample shape:'+str(train_poses_arr.shape))
+                self.logger.info('labels tensor shape:'+str(train_label_arr.shape))
+                self.logger.info('angle tensor shape:'+str(angles.shape))
+                print angles
 
                 # resize images
                 rescale_factor = float(self.im_height) / train_images_arr.shape[1]
@@ -1191,6 +1236,7 @@ class GQCNNTrainerTF(object):
 
                 if self._angular_bins > 0:
                     bins = np.zeros_like(train_label_arr)
+                    self.logger.info("bins shapes is:"+str(bins.shape))
                     # form prediction mask to use when calculating loss
                     neg_ind = np.where(angles < 0)
                     angles = np.abs(angles) % self._max_angle
@@ -1206,7 +1252,7 @@ class GQCNNTrainerTF(object):
                         bins[i] = angles[i] // self._bin_width
                         train_pred_mask_arr[i, int((angles[i] // self._bin_width)*2)] = 1
                         train_pred_mask_arr[i, int((angles[i] // self._bin_width)*2 + 1)] = 1
-
+                    self.logger.info("train_pred_mask_arr shapes is:"+str(train_pred_mask_arr.shape))
                 # compute the number of examples loaded
                 num_loaded = train_images_arr.shape[0]
                 end_i = start_i + num_loaded
