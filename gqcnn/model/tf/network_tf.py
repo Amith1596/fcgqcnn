@@ -431,7 +431,10 @@ class GQCNNTF(object):
             if train_im_node is not None:
                 # training
                 self._input_im_node = tf.placeholder_with_default(train_im_node, (None, self._im_height, self._im_width, self._num_channels))
-                self._input_pose_node = tf.placeholder_with_default(train_pose_node, (None, self._pose_dim))
+                if train_pose_node is not None:
+                    self._input_pose_node = tf.placeholder_with_default(train_pose_node, (None, self._pose_dim))
+                else:
+                    self._input_pose_node = tf.placeholder(tf.float32, (self._batch_size, self._pose_dim))
             else:
                 # inference only using GQ-CNN instantiated from GQCNNTF.load()
                 self._input_im_node = tf.placeholder(tf.float32, (self._batch_size, self._im_height, self._im_width, self._num_channels))

@@ -45,7 +45,7 @@ new_problem_images=["2019-02-13-19-35-5212345",
 
 #     os.system('python examples/policy.py FC-GQCNN-4.0-PJ --depth_image '+ depth_path + ' --id ' +folder+ ' --fully_conv')
 
-for folder in folders[:]:
+for folder in folders[:1]:
     img_path=alt_path+folder+"/depth_0.npy"
     #img_path=path+folder+"/primesense/depth_0.npy"
     

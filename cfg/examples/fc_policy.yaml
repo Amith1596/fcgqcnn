@@ -28,7 +28,7 @@ policy:
     num_samples: 0
     actions_2d: 0
     actions_3d: 0
-    affordance_map: 1
+    affordance_map: 0
   vis:
     final_grasp: 1
 
